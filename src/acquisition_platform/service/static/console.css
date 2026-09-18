@@ -1,0 +1,28 @@
+html,body{margin:0;padding:0;background:#090a0d;overflow:hidden}
+  *{box-sizing:border-box}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  input[type=range]{-webkit-appearance:none;appearance:none;height:3px;background:rgba(255,255,255,.14);outline:none;border-radius:2px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:9px;height:15px;background:#7aa6f0;cursor:pointer;border-radius:2px}
+  input[type=range]::-moz-range-thumb{width:9px;height:15px;border:0;background:#7aa6f0;cursor:pointer;border-radius:2px}
+  .gl-html{position:absolute;left:0;top:0;pointer-events:none;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+  @keyframes leoptLogoIn{0%{opacity:0;transform:translateY(20px) scale(.93)}100%{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes leoptUp{0%{opacity:0;transform:translateY(16px)}100%{opacity:1;transform:translateY(0)}}
+  @keyframes leoptFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  @keyframes leoptSpin{to{transform:rotate(360deg)}}
+  @keyframes leoptPulse{0%{box-shadow:0 0 0 0 rgba(122,166,240,.5)}70%{box-shadow:0 0 0 16px rgba(122,166,240,0)}100%{box-shadow:0 0 0 0 rgba(122,166,240,0)}}
+  @keyframes leoptRise{0%{transform:translateY(24px)}100%{transform:translateY(0)}}
+  @keyframes leoptGlowW{0%,100%{border-color:rgba(255,255,255,.45)}50%{border-color:rgba(255,255,255,.95)}}
+  @keyframes leoptArrow{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+  .leopt-launch{position:relative;overflow:hidden;transition:color .35s ease}
+  .leopt-launch>span{position:relative;z-index:1;display:inline-flex;align-items:center;gap:12px}
+  .leopt-launch::before{content:'';position:absolute;inset:0;background:#fff;transform:scaleX(0);transform-origin:left;transition:transform .38s cubic-bezier(.5,.15,.2,1);z-index:0}
+  .leopt-launch:hover{color:#05070b}
+  .leopt-launch:hover::before{transform:scaleX(1)}
+  .leopt-launch:hover .leopt-arrow{animation:leoptArrow .9s ease-in-out infinite}
+  .edit-mission:hover{border-color:#7aa6f0 !important;color:#dce6fb !important}
+  .quiet-button:hover{border-color:rgba(255,255,255,.4) !important;color:#eef0f3 !important}
+  .orbit-textarea:focus{border-color:rgba(255,255,255,.45) !important}
+  .form-input:focus{border-bottom-color:rgba(255,255,255,.5) !important}
+  .remove-station:hover{color:#e6a79f !important}

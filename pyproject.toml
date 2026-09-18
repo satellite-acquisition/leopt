@@ -1,0 +1,55 @@
+[project]
+name = "leopt"
+version = "0.1.0"
+description = "Bayesian search and antenna pointing for satellite acquisition."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Carlo Schreiber" }]
+keywords = ["satellite-acquisition", "antenna-pointing", "bayesian-search", "pomdp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+dependencies = ["numpy>=1.26", "scipy>=1.12", "sgp4>=2.25"]
+
+[project.urls]
+Repository = "https://github.com/satellite-acquisition/leopt"
+Issues = "https://github.com/satellite-acquisition/leopt/issues"
+
+[project.optional-dependencies]
+platform = [
+    "fastapi>=0.138.0",
+    "pydantic>=2.12",
+    "uvicorn[standard]>=0.49.0",
+    "reportlab>=4.4.4",
+]
+viz = ["matplotlib>=3.8"]
+validation = ["brahe==1.3.2"]
+adapters = ["pysnmp>=7.1.6", "pyserial>=3.5"]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.28", "ruff>=0.15"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/antenna_pomdp", "src/acquisition_platform"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/examples", "/assets", "/README.md", "/LICENSE", "/pyproject.toml", "/uv.lock"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src/antenna_pomdp/tests", "src/acquisition_platform/tests", "src/acquisition_platform/observations/tests", "src/acquisition_platform/drivers/tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "examples"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

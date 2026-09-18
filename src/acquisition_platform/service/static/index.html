@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LEOPT Acquisition Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="console.css">
+<script defer src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script defer src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+<script defer src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
+<script defer src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script defer src="intro.js"></script>
+<script defer src="api.js"></script>
+<script defer src="live.js"></script>
+<script defer src="console.js"></script>
+<script defer src="support.js"></script>
+</head>
+<body>
+<div id="leopt-root" role="main"><p style="color:#aab0ba;padding:24px;font-family:system-ui">Loading LEOPT…</p></div>
+<noscript>Enable JavaScript to use the acquisition console.</noscript>
+<template id="console-template">
+<div style="height:100vh;width:100vw;display:flex;flex-direction:column;font-family:'IBM Plex Sans',system-ui,sans-serif;background:#090a0d;color:#aab0ba;font-size:12px;position:relative">
+
+  <!-- HEADER -->
+  <template data-if="{{ chromeOpen }}">
+  <header style="height:54px;flex:0 0 54px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.07);background:#0d0f13;position:relative;z-index:30">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font-size:18px;font-weight:600;color:#eef0f3;letter-spacing:.04em">LEOPT</span>
+      <span style="font-size:9px;color:#646b76;letter-spacing:.18em">ACQUISITION&nbsp;CONSOLE</span>
+    </div>
+    <template data-if="{{ showEdit }}">
+      <button onClick="{{ onEditPlan }}" style="margin-left:6px;padding:7px 12px;background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:5px;color:#aab0ba;font-family:inherit;font-size:10px;letter-spacing:.06em;cursor:pointer" class="edit-mission">&#9881;&nbsp; EDIT MISSION</button>
+      <button onClick="{{ onExportSchedule }}" aria-busy="{{ scheduleExportBusy }}" aria-disabled="{{ scheduleExportBusy }}" title="Exports the current backend PlanSession, not the visual simulation" style="{{ scheduleExportStyle }}">{{ scheduleExportLabel }}</button>
+      <span aria-live="polite" style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px;color:{{ scheduleExportStatusColor }};letter-spacing:.08em;font-family:'IBM Plex Mono',monospace">{{ scheduleExportStatus }}</span>
+    </template>
+    <div style="flex:1"></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.15">
+      <span style="font-size:8px;color:#646b76;letter-spacing:.16em">MET&nbsp;SINCE&nbsp;SEPARATION</span>
+      <span style="font-size:19px;font-weight:500;color:#eef0f3;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ clockStr }}</span>
+    </div>
+  </header>
+  </template>
+
+  <!-- BODY -->
+  <div style="flex:1;display:flex;min-height:0;position:relative">
+
+    <!-- GLOBE PANE -->
+    <div style="flex:1.65;position:relative;min-width:0;background:radial-gradient(125% 125% at 50% 40%,#13161c 0%,#090a0d 72%)">
+      <div ref="{{ globeRef }}" style="position:absolute;inset:0"></div>
+
+      <div style="position:absolute;top:16px;right:16px">
+        <button onClick="{{ onToggleReveal }}" style="{{ revealStyle }}">{{ revealLabel }}</button>
+      </div>
+
+      <div style="position:absolute;bottom:16px;right:16px;pointer-events:none;background:rgba(13,15,19,.66);border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:10px 12px;line-height:1.9;font-size:9.5px;color:#8b929c;backdrop-filter:blur(3px)">
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:18px;height:2px;background:#7aa6f0;display:inline-block"></span>NOMINAL ORBIT</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:11px;height:11px;border-radius:50%;background:radial-gradient(circle,#cfe0ff,rgba(122,166,240,.06));display:inline-block"></span>POSITION BELIEF</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:11px;height:11px;border-radius:50%;border:1px solid #e0a96b;background:rgba(224,169,107,.16);display:inline-block"></span>BEAM &middot; P(DETECT)</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:11px;height:11px;border-radius:50%;border:1px solid rgba(255,255,255,.28);display:inline-block"></span>VIS CONE &middot; {{ minElStr }}</div>
+      </div>
+
+      <div style="position:absolute;bottom:16px;left:16px;pointer-events:none;background:rgba(13,15,19,.66);border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:10px 12px;backdrop-filter:blur(3px)">
+        <div style="font-size:9px;color:#646b76;letter-spacing:.1em;margin-bottom:5px">BELIEF ENTROPY &middot; <span style="font-family:'IBM Plex Mono',monospace;color:#8b929c">{{ entStr }}</span> bits</div>
+        <svg width="200" height="38" viewBox="0 0 200 38" style="display:block">
+          <polyline points="{{ sparkPath }}" fill="none" stroke="#7aa6f0" stroke-width="1.4"></polyline>
+        </svg>
+      </div>
+    </div>
+
+    <!-- RIGHT RAIL -->
+    <aside style="width:434px;flex:0 0 434px;display:flex;flex-direction:column;min-height:0;background:#0d0f13;border-left:1px solid rgba(255,255,255,.07)">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid rgba(255,255,255,.07)">
+        <template data-each="{{ statCells }}" data-as="s">
+          <div style="padding:10px 12px;border-right:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05)">
+            <div style="font-size:8px;color:#646b76;letter-spacing:.08em">{{ s.label }}</div>
+            <div style="font-size:16px;font-weight:500;color:{{ s.color }};font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ s.value }}</div>
+          </div>
+        </template>
+      </div>
+
+      <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:9px;color:#646b76;letter-spacing:.14em">NEXT PLANNED DWELL</span>
+          <span style="font-size:9px;color:{{ strategyColor }};letter-spacing:.06em;border:1px solid {{ strategyColor }};border-radius:3px;padding:2px 7px">{{ strategyLabel }}</span>
+        </div>
+
+        <template data-if="{{ acquired }}">
+          <div style="border:1px solid rgba(107,191,148,.5);background:rgba(107,191,148,.07);border-radius:6px;padding:18px;text-align:center">
+            <div style="font-size:11px;color:#6bbf94;letter-spacing:.14em">&#10003; SIGNAL ACQUIRED</div>
+            <div style="font-size:26px;font-weight:500;color:#eef0f3;margin:7px 0 3px;font-family:'IBM Plex Mono',monospace">{{ acqStr }}</div>
+            <div style="font-size:9.5px;color:#7b828d">{{ acqDetail }}</div>
+          </div>
+        </template>
+
+        <template data-if="{{ showDwell }}">
+          <div style="border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:13px;background:rgba(255,255,255,.02)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px">
+              <span style="font-size:17px;font-weight:600;color:#eef0f3">{{ cdStation }}</span>
+              <span style="font-size:10px;color:#7b828d;font-family:'IBM Plex Mono',monospace">T &middot; SEP+{{ cdTime }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:12px">
+              <div><div style="font-size:8px;color:#646b76">AZ</div><div style="font-size:15px;color:#dadee4;font-family:'IBM Plex Mono',monospace">{{ cdAz }}&deg;</div></div>
+              <div><div style="font-size:8px;color:#646b76">EL</div><div style="font-size:15px;color:#dadee4;font-family:'IBM Plex Mono',monospace">{{ cdEl }}&deg;</div></div>
+              <div><div style="font-size:8px;color:#646b76">HOLD</div><div style="font-size:15px;color:#dadee4;font-family:'IBM Plex Mono',monospace">{{ cdHold }}s</div></div>
+            </div>
+            <div style="font-size:8px;color:#646b76;letter-spacing:.06em;margin-bottom:4px">P(DETECT) &middot; AIM {{ cdAim }}</div>
+            <div style="height:13px;background:rgba(255,255,255,.06);border-radius:3px;position:relative;margin-bottom:14px;overflow:hidden">
+              <div style="position:absolute;inset:0 auto 0 0;width:{{ cdPdetW }}%;background:{{ cdPdetColor }}"></div>
+              <span style="position:absolute;right:6px;top:0;line-height:13px;font-size:9.5px;font-weight:600;color:#eef0f3;font-family:'IBM Plex Mono',monospace">{{ cdPdet }}</span>
+            </div>
+            <div style="display:flex;gap:9px">
+              <button onClick="{{ onDetect }}" style="flex:1;padding:10px 0;background:rgba(122,166,240,.14);border:1px solid rgba(122,166,240,.55);border-radius:5px;color:#dce6fb;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.04em;cursor:pointer">REPORT DETECT</button>
+              <button onClick="{{ onNoDetect }}" style="flex:1;padding:10px 0;background:rgba(216,120,110,.08);border:1px solid rgba(216,120,110,.5);border-radius:5px;color:#e6a79f;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.04em;cursor:pointer">NO-DETECT</button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div style="flex:1;display:flex;flex-direction:column;min-height:0;padding:14px 16px 8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:9px;color:#646b76;letter-spacing:.14em">NETWORK PASS TIMELINE</span>
+          <span style="font-size:8.5px;color:#7b828d">P(ACQUIRE) &middot; MAX GAP {{ maxGapStr }}</span>
+        </div>
+        <div style="position:relative;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden">
+          <div style="display:flex;height:14px;padding-left:46px">
+            <template data-each="{{ axisTicks }}" data-as="a">
+              <div style="flex:1;font-size:8px;color:#646b76;border-left:1px solid rgba(255,255,255,.07);font-family:'IBM Plex Mono',monospace">&nbsp;{{ a.label }}</div>
+            </template>
+          </div>
+          <div style="position:relative">
+            <template data-each="{{ rows }}" data-as="row">
+              <div style="display:flex;align-items:center;height:30px">
+                <div style="width:46px;flex:0 0 46px;font-size:9.5px;color:#8b929c;font-family:'IBM Plex Mono',monospace">{{ row.code }}</div>
+                <div style="position:relative;flex:1;height:100%;border-bottom:1px solid rgba(255,255,255,.05)">
+                  <template data-each="{{ row.passes }}" data-as="p">
+                    <div style="position:absolute;top:7px;bottom:7px;left:{{ p.leftPct }}%;width:{{ p.widthPct }}%;background:{{ p.bg }};border:1px solid {{ p.border }};border-radius:2px;box-shadow:{{ p.glow }}"></div>
+                  </template>
+                </div>
+              </div>
+            </template>
+            <div style="position:absolute;top:0;bottom:0;left:46px;right:0;pointer-events:none">
+              <div style="position:absolute;top:0;bottom:0;left:{{ clockPct }}%;width:1px;background:#eef0f3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- PLAN / MISSION PLANNER OVERLAY -->
+    <template data-if="{{ planOpen }}">
+      <div style="position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;background:radial-gradient(ellipse 90% 80% at 50% 22%,#0f1420 0%,#0a0e16 55%,#06080c 100%)">
+
+        <!-- faint backdrop motif -->
+        <div style="position:absolute;top:-180px;left:50%;width:900px;height:900px;transform:translateX(-50%);animation:leoptSpin 90s linear infinite;opacity:.5;pointer-events:none">
+          <svg width="900" height="900" viewBox="0 0 900 900" style="display:block"><ellipse cx="450" cy="450" rx="420" ry="170" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="1" transform="rotate(-16 450 450)"></ellipse></svg>
+        </div>
+
+        <!-- HEADER -->
+        <div style="position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:18px 30px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <span style="font-size:16px;font-weight:700;color:#eef0f3;letter-spacing:.16em">LEOPT</span>
+            <span style="width:1px;height:15px;background:rgba(255,255,255,.16)"></span>
+            <span style="font-size:10px;color:#7b828d;letter-spacing:.3em">MISSION SETUP</span>
+          </div>
+          <template data-if="{{ planBack }}">
+          <button onClick="{{ onCancelPlan }}" style="padding:8px 15px;background:transparent;border:1px solid rgba(255,255,255,.14);color:#9aa1ab;font-family:inherit;font-size:9px;letter-spacing:.14em;cursor:pointer" class="quiet-button">&#8592; DASHBOARD</button>
+          </template>
+        </div>
+
+        <!-- BODY -->
+        <div style="position:relative;flex:1;overflow:auto">
+          <div style="max-width:880px;margin:0 auto;padding:18px 30px 60px">
+            <div style="font-size:12px;color:#6b727d;line-height:1.6;margin-bottom:46px;max-width:560px">Configure the orbit, ground network, and acquisition parameters &mdash; then roll out to the live console.</div>
+
+            <!-- STEP 01 -->
+            <div style="display:flex;gap:26px;margin-bottom:42px">
+              <div style="flex:0 0 60px;padding-top:2px">
+                <div style="font-size:26px;font-weight:300;color:#3a4150;font-family:'IBM Plex Mono',monospace;line-height:1">01</div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-size:12px;color:#eef0f3;letter-spacing:.18em;font-weight:600">ORBIT SOURCE</span>
+                  <div style="display:flex;gap:7px">
+                    <button onClick="{{ onBrowse }}" style="padding:5px 11px;background:transparent;border:1px solid rgba(255,255,255,.14);color:#9aa1ab;font-family:inherit;font-size:9px;letter-spacing:.1em;cursor:pointer" class="quiet-button">BROWSE FILE</button>
+                    <button onClick="{{ onLoadSample }}" style="padding:5px 11px;background:transparent;border:1px solid rgba(255,255,255,.14);color:#9aa1ab;font-family:inherit;font-size:9px;letter-spacing:.1em;cursor:pointer" class="quiet-button">LOAD SAMPLE</button>
+                  </div>
+                  <input type="file" ref="{{ fileInputRef }}" onChange="{{ onPickFile }}" accept=".txt,.opm,.tle,.kvn,.3le,text/plain" style="display:none">
+                </div>
+                <div style="font-size:11px;color:#6b727d;line-height:1.6;margin-bottom:14px">Paste the launch provider's OPM (KVN) or two-line TLE, or drop a file below. This seeds the initial belief over the true orbit.</div>
+                <div onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDropFile }}" style="position:relative">
+                  <textarea value="{{ opmValue }}" onInput="{{ onOpm }}" spellcheck="false" placeholder="Paste OPM or TLE here, or drag &amp; drop a .txt / .opm / .tle file…" style="width:100%;min-height:150px;resize:vertical;background:rgba(255,255,255,.025);border:1px solid {{ dropBorder }};border-radius:3px;color:#e6e8ec;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;padding:13px;outline:none;transition:border-color .2s ease" class="orbit-textarea"></textarea>
+                  <template data-if="{{ dragOver }}">
+                    <div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;background:rgba(122,166,240,.08);border:1px dashed rgba(122,166,240,.6);border-radius:3px">
+                      <span style="font-size:11px;color:#cfe0ff;letter-spacing:.16em">&#8595;&nbsp; DROP ORBIT FILE</span>
+                    </div>
+                  </template>
+                </div>
+                <div style="margin-top:11px;font-size:10px;color:#8b929c;font-family:'IBM Plex Mono',monospace;letter-spacing:.02em">{{ parsedSummary }}</div>
+              </div>
+            </div>
+
+            <div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:42px"></div>
+
+            <!-- STEP 02 -->
+            <div style="display:flex;gap:26px;margin-bottom:42px">
+              <div style="flex:0 0 60px;padding-top:2px">
+                <div style="font-size:26px;font-weight:300;color:#3a4150;font-family:'IBM Plex Mono',monospace;line-height:1">02</div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-size:12px;color:#eef0f3;letter-spacing:.18em;font-weight:600">GROUND STATION NETWORK</span>
+                  <div style="display:flex;gap:5px">
+                    <template data-each="{{ presets }}" data-as="pr">
+                      <button onClick="{{ pr.on }}" style="padding:5px 11px;background:transparent;border:1px solid rgba(255,255,255,.14);color:#9aa1ab;font-family:inherit;font-size:9px;letter-spacing:.1em;cursor:pointer" class="quiet-button">{{ pr.label }}</button>
+                    </template>
+                  </div>
+                </div>
+                <div style="font-size:11px;color:#6b727d;line-height:1.6;margin-bottom:16px">The antenna stations the planner schedules dwells across.</div>
+                <div style="display:flex;gap:10px;padding:0 34px 0 0;margin-bottom:9px">
+                  <span style="flex:2;font-size:8px;color:#5a616c;letter-spacing:.14em">STATION</span>
+                  <span style="flex:1;font-size:8px;color:#5a616c;letter-spacing:.14em">LATITUDE</span>
+                  <span style="flex:1;font-size:8px;color:#5a616c;letter-spacing:.14em">LONGITUDE</span>
+                </div>
+                <template data-each="{{ stationRows }}" data-as="s">
+                  <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+                    <input value="{{ s.name }}" onInput="{{ s.onName }}" style="flex:2;min-width:0;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.12);color:#e6e8ec;font-family:inherit;font-size:12px;padding:7px 2px;outline:none" class="form-input">
+                    <input value="{{ s.lat }}" onInput="{{ s.onLat }}" style="flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.12);color:#e6e8ec;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:7px 2px;outline:none" class="form-input">
+                    <input value="{{ s.lng }}" onInput="{{ s.onLng }}" style="flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.12);color:#e6e8ec;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:7px 2px;outline:none" class="form-input">
+                    <button onClick="{{ s.onRemove }}" style="flex:0 0 24px;width:24px;height:30px;background:transparent;border:0;color:#5a616c;cursor:pointer;font-size:13px" class="remove-station">&#10005;</button>
+                  </div>
+                </template>
+                <button onClick="{{ onAddStation }}" style="margin-top:10px;padding:8px 16px;background:transparent;border:1px solid rgba(255,255,255,.14);color:#9aa1ab;font-family:inherit;font-size:10px;letter-spacing:.12em;cursor:pointer" class="quiet-button">+ ADD STATION</button>
+              </div>
+            </div>
+
+            <div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:8px"></div>
+
+            <!-- STEP 03 ADVANCED -->
+            <div style="display:flex;gap:26px">
+              <div style="flex:0 0 60px;padding-top:18px">
+                <div style="font-size:26px;font-weight:300;color:#3a4150;font-family:'IBM Plex Mono',monospace;line-height:1">03</div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <button onClick="{{ onToggleAdv }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:18px 0;background:transparent;border:0;color:#eef0f3;font-family:inherit;font-size:12px;letter-spacing:.18em;font-weight:600;cursor:pointer;text-align:left">
+                  <span>ADVANCED <span style="color:#5a616c;font-weight:400">&mdash; ORBIT &middot; ANTENNA &middot; SATELLITE &middot; SIMULATION</span></span><span style="color:#9aa1ab;font-size:11px">{{ advCaret }}</span>
+                </button>
+                <template data-if="{{ advOpen }}">
+                  <div style="padding:4px 0 18px">
+                    <!-- sub-menu tabs: ORBIT / ANTENNA / SATELLITE / SIMULATION -->
+                    <div style="display:flex;gap:2px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:22px">
+                      <template data-each="{{ advTabs }}" data-as="t">
+                        <button onClick="{{ t.on }}" style="{{ t.style }}">{{ t.label }}</button>
+                      </template>
+                    </div>
+
+                    <template data-if="{{ showOrbit }}">
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 26px;max-width:470px">
+                        <template data-each="{{ orbitFields }}" data-as="f">
+                          <div style="margin-bottom:15px">
+                            <label style="font-size:9px;color:#6b727d;letter-spacing:.06em;display:block;margin-bottom:6px">{{ f.label }}</label>
+                            <div style="display:flex;align-items:baseline;gap:6px">
+                              <input value="{{ f.value }}" onInput="{{ f.on }}" style="flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.12);color:#e6e8ec;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:5px 1px;outline:none" class="form-input">
+                              <span style="font-size:9px;color:#5a616c;width:24px;flex:0 0 24px">{{ f.unit }}</span>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+
+                    <template data-if="{{ showAntenna }}">
+                      <div style="max-width:540px">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 26px;max-width:320px">
+                          <template data-each="{{ groundFields }}" data-as="f">
+                            <div style="margin-bottom:15px">
+                              <label style="font-size:9px;color:#6b727d;letter-spacing:.06em;display:block;margin-bottom:6px">{{ f.label }}</label>
+                              <div style="display:flex;align-items:baseline;gap:6px">
+                                <input value="{{ f.value }}" onInput="{{ f.on }}" style="flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.12);color:#e6e8ec;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:5px 1px;outline:none" class="form-input">
+                                <span style="font-size:9px;color:#5a616c;width:24px;flex:0 0 24px">{{ f.unit }}</span>
+                              </div>
+                            </div>
+                          </template>
+                        </div>
+                        <div style="margin-top:6px">
+                          <label style="font-size:9px;color:#5a616c;letter-spacing:.12em;display:block;margin-bottom:9px">GROUND ANTENNA &middot; AGILITY</label>
+                          <div style="display:flex;gap:5px;flex-wrap:wrap">
+                            <template data-each="{{ mountSegments }}" data-as="m">
+                              <button onClick="{{ m.on }}" style="{{ m.style }}">{{ m.label }}</button>
+                            </template>
+                          </div>
+                          <template data-if="{{ recNote }}">
+                            <div style="margin-top:8px;font-size:9px;line-height:1.5;color:#8a919c;max-width:520px">{{ recNote }}</div>
+                          </template>
+                        </div>
+                        <div style="margin-top:18px">
+                          <label style="font-size:9px;color:#5a616c;letter-spacing:.12em;display:block;margin-bottom:9px">CONTROLLER</label>
+                          <div style="display:flex;gap:5px;flex-wrap:wrap">
+                            <template data-each="{{ planStrategies }}" data-as="s">
+                              <button onClick="{{ s.on }}" style="{{ s.style }}">{{ s.label }}</button>
+                            </template>
+                          </div>
+                          <template data-if="{{ controllerNote }}">
+                            <div style="margin-top:8px;font-size:9px;line-height:1.5;color:#7aa6f0;max-width:520px">{{ controllerNote }}</div>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+
+                    <template data-if="{{ showSatellite }}">
+                      <div style="max-width:540px">
+                        <label style="font-size:9px;color:#5a616c;letter-spacing:.12em;display:block;margin-bottom:9px">SPACECRAFT TT&amp;C ANTENNA</label>
+                        <div style="display:flex;gap:5px;flex-wrap:wrap">
+                          <template data-each="{{ satSegments }}" data-as="a">
+                            <button onClick="{{ a.on }}" style="{{ a.style }}">{{ a.label }}</button>
+                          </template>
+                        </div>
+                        <div style="margin-top:10px;font-size:9px;line-height:1.5;color:#8a919c;max-width:520px">Sets the LEOP dwell/hold: a near-omni turnstile links quickly while the spacecraft tumbles; a directional patch has deep nulls and needs longer holds to ride through fades.</div>
+                      </div>
+                    </template>
+
+                    <template data-if="{{ showSimulation }}">
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 26px;max-width:470px">
+                        <template data-each="{{ simFields }}" data-as="f">
+                          <div style="margin-bottom:15px">
+                            <label style="font-size:9px;color:#6b727d;letter-spacing:.06em;display:block;margin-bottom:6px">{{ f.label }}</label>
+                            <div style="display:flex;align-items:baseline;gap:6px">
+                              <input value="{{ f.value }}" onInput="{{ f.on }}" style="flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.12);color:#e6e8ec;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:5px 1px;outline:none" class="form-input">
+                              <span style="font-size:9px;color:#5a616c;width:24px;flex:0 0 24px">{{ f.unit }}</span>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 30px;border-top:1px solid rgba(255,255,255,.07);background:rgba(8,10,14,.6);backdrop-filter:blur(4px)">
+          <div style="font-size:10px;color:#7b828d;font-family:'IBM Plex Mono',monospace;letter-spacing:.04em">{{ planSummary }}</div>
+          <button onClick="{{ onRollout }}" class="leopt-launch" style="padding:14px 44px;background:transparent;border:1px solid rgba(255,255,255,.45);color:#fff;font-family:inherit;font-size:12px;font-weight:600;letter-spacing:.28em;text-indent:.28em;cursor:pointer"><span>ROLL OUT <span class="leopt-arrow" style="display:inline-block">&#8594;</span></span></button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- TRANSPORT -->
+  <template data-if="{{ chromeOpen }}">
+  <footer style="height:58px;flex:0 0 58px;display:flex;align-items:center;gap:14px;padding:0 20px;border-top:1px solid rgba(255,255,255,.07);background:#0d0f13;position:relative;z-index:30">
+    <button onClick="{{ onPlay }}" style="{{ playStyle }}">{{ playLabel }}</button>
+    <button onClick="{{ onAutoplay }}" style="{{ autoStyle }}">{{ autoLabel }}</button>
+    <button onClick="{{ onReset }}" style="padding:8px 12px;background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:5px;color:#8b929c;font-family:inherit;font-size:10px;letter-spacing:.06em;cursor:pointer">RESET</button>
+
+    <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:#646b76;letter-spacing:.06em">
+        <span>MISSION CLOCK &middot; SCRUB</span><span style="font-family:'IBM Plex Mono',monospace">{{ clockStr }} / {{ windowStr }}</span>
+      </div>
+      <input type="range" min="0" max="{{ windowSec }}" step="30" value="{{ clockVal }}" onInput="{{ onScrub }}" style="width:100%">
+    </div>
+
+    <div style="width:1px;height:30px;background:rgba(255,255,255,.08)"></div>
+
+    <div style="display:flex;flex-direction:column;gap:4px;width:150px">
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:#646b76;letter-spacing:.06em">
+        <span>HYPOTHETICAL TRUTH</span><span style="color:#d8786e;font-family:'IBM Plex Mono',monospace">{{ truthStr }}</span>
+      </div>
+      <input type="range" min="-4" max="4" step="0.1" value="{{ truthVal }}" onInput="{{ onSetTruth }}" style="width:100%">
+    </div>
+  </footer>
+  </template>
+
+  <!-- SPLASH / TITLE -->
+  <template data-if="{{ splashOpen }}">
+    <div style="position:absolute;inset:0;z-index:60;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse 82% 72% at 50% 38%,#101725 0%,#0a0e16 56%,#05070b 100%);opacity:{{ splashOpacity }};transform:scale({{ splashScale }});transition:opacity .55s ease,transform .7s ease;pointer-events:{{ splashPointer }}">
+
+      <div style="position:absolute;inset:0;background-image:radial-gradient(1.4px 1.4px at 18% 28%,rgba(255,255,255,.7),transparent),radial-gradient(1.2px 1.2px at 78% 22%,rgba(255,255,255,.5),transparent),radial-gradient(1px 1px at 62% 66%,rgba(255,255,255,.45),transparent),radial-gradient(1.3px 1.3px at 33% 74%,rgba(255,255,255,.5),transparent),radial-gradient(1px 1px at 88% 56%,rgba(255,255,255,.4),transparent),radial-gradient(1px 1px at 11% 58%,rgba(255,255,255,.4),transparent),radial-gradient(1.1px 1.1px at 52% 16%,rgba(255,255,255,.45),transparent);opacity:.65"></div>
+
+      <div style="position:absolute;width:780px;height:780px;animation:leoptSpin 70s linear infinite;opacity:.55;pointer-events:none">
+        <svg width="780" height="780" viewBox="0 0 780 780" style="display:block"><ellipse cx="390" cy="390" rx="360" ry="150" fill="none" stroke="rgba(122,166,240,.20)" stroke-width="1" transform="rotate(-18 390 390)"></ellipse></svg>
+      </div>
+      <div style="position:absolute;width:560px;height:560px;animation:leoptSpin 48s linear infinite reverse;opacity:.5;pointer-events:none">
+        <svg width="560" height="560" viewBox="0 0 560 560" style="display:block"><ellipse cx="280" cy="280" rx="262" ry="118" fill="none" stroke="rgba(122,166,240,.16)" stroke-width="1" stroke-dasharray="3 8" transform="rotate(22 280 280)"></ellipse></svg>
+      </div>
+
+      <div ref="{{ splashGlobeRef }}" style="position:absolute;left:50%;top:48%;width:620px;height:620px;transform:translate(-50%,-50%);pointer-events:none"></div>
+
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 24px">
+        <div style="position:relative;width:760px;max-width:88vw;height:430px">
+          <div style="position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%) scale(0.595);transform-origin:center;pointer-events:none">
+            <div data-component="LeoptIntro" style="position:absolute;inset:0;width:1280px;height:720px"></div>
+          </div>
+        </div>
+        <button onClick="{{ onLaunch }}" class="leopt-launch" style="margin-top:-24px;padding:16px 0;width:236px;background:transparent;border:1px solid rgba(255,255,255,.45);border-radius:0;color:#fff;font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.34em;text-indent:.34em;cursor:pointer;animation:leoptRise .85s ease .35s both,leoptGlowW 3.4s ease-in-out 1.2s infinite"><span>LAUNCH <span class="leopt-arrow" style="display:inline-block">&#8594;</span></span></button>
+      </div>
+
+      <div style="position:absolute;bottom:26px;font-size:9px;letter-spacing:.22em;color:#454c58;animation:leoptRise .8s ease .6s both">BELIEF-DRIVEN ANTENNA ACQUISITION</div>
+    </div>
+  </template>
+</div>
+</template>
+</body>
+</html>
