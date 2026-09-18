@@ -4,6 +4,9 @@
 
 # LEOPT
 
+[![CI](https://github.com/satellite-acquisition/leopt/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/satellite-acquisition/leopt/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/satellite-acquisition/leopt/tree/v1.0.0)
+
 Bayesian search and antenna pointing for satellite acquisition. LEOPT propagates
 an uncertain orbit, plans where to point a ground antenna, and updates the search
 after detections and misses.
@@ -77,6 +80,12 @@ uv sync --frozen --extra platform --extra viz --extra validation
 uv run pytest -q
 uv run ruff check .
 ```
+
+CI runs on pushes and pull requests. It checks Python 3.11–3.13, JavaScript
+syntax, the solver example, and installation of the built wheel.
+
+Versions follow `MAJOR.MINOR.PATCH`: incompatible API changes, new features,
+and fixes. Releases are tagged `vX.Y.Z`; the current release is `v1.0.0`.
 
 ## License
 

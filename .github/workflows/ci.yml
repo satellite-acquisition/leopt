@@ -1,22 +1,61 @@
 name: CI
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: uv python install ${{ matrix.python-version }}
-      - run: uv sync --frozen --extra platform --extra viz --extra validation --python ${{ matrix.python-version }}
-      - run: uv run ruff check .
-      - run: uv run pytest -q
-      - run: uv run python examples/search.py
-      - run: uv build
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Install locked dependencies
+        run: uv sync --frozen --extra platform --extra viz --extra validation --python ${{ matrix.python-version }}
+      - name: Check release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          uv run python - <<'PY'
+          import os
+          from importlib.metadata import version
+          expected = "v" + version("leopt")
+          assert os.environ["GITHUB_REF_NAME"] == expected, f"Release tag must be {expected}"
+          PY
+      - name: Lint Python
+        run: uv run ruff check .
+      - name: Run tests
+        run: uv run pytest -q
+      - name: Run solver example
+        run: uv run python examples/search.py
+      - name: Build distributions
+        run: uv build
+      - name: Check installed wheel
+        run: |
+          uv venv /tmp/leopt-wheel --python ${{ matrix.python-version }}
+          wheel_path=$(realpath dist/*.whl)
+          uv pip install --python /tmp/leopt-wheel/bin/python "${wheel_path}[platform]" httpx
+          /tmp/leopt-wheel/bin/python tests/check_wheel.py
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: |
+          for file in src/acquisition_platform/service/static/*.js; do
+            node --check "$file"
+          done

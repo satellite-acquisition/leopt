@@ -20,6 +20,7 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 
+from antenna_pomdp import __version__
 from acquisition_platform.estimator.ukf import SgpUkf
 from acquisition_platform.ingest.catalog import CelesTrakClient, SpaceTrackClient
 from acquisition_platform.ingest.detect import IngestOutcome, parse_any
@@ -135,7 +136,7 @@ async def _lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="LEOPT", lifespan=_lifespan)
+app = FastAPI(title="LEOPT", version=__version__, lifespan=_lifespan)
 
 
 def _checkpoint(sid: str, session: PlanSession, action: str, detail: dict | None = None) -> None:

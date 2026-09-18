@@ -1,6 +1,6 @@
 [project]
 name = "leopt"
-version = "0.1.0"
+version = "1.0.0"
 description = "Bayesian search and antenna pointing for satellite acquisition."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -9,7 +9,6 @@ license-files = ["LICENSE"]
 authors = [{ name = "Carlo Schreiber" }]
 keywords = ["satellite-acquisition", "antenna-pointing", "bayesian-search", "pomdp"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Astronomy",

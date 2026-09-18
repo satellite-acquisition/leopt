@@ -18,13 +18,13 @@ import threading
 import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape
 
 from acquisition_platform.planner.session import MAX_DWELLS_PER_PASS, PlanSession
+from antenna_pomdp import __version__
 
 
 SCHEMA_VERSION = "platform-schedule-v1"
@@ -100,13 +100,6 @@ def _bounded_text(value: object, field: str, limit: int, *, allow_empty: bool = 
     if len(text) > limit:
         raise ScheduleExportError(f"{field} exceeds {limit} characters")
     return text
-
-
-def _software_version() -> str:
-    try:
-        return version("leopt")
-    except PackageNotFoundError:
-        return "0.1.0"
 
 
 def _controller_record(session: PlanSession) -> dict[str, Any] | None:
@@ -394,7 +387,7 @@ def build_schedule_payload(session_id: str, session: PlanSession) -> dict[str, A
             "canonical_json_is_authoritative": True,
         },
         "session_id": sid,
-        "software_version": _software_version(),
+        "software_version": __version__,
         "active_policy": _bounded_text(session.policy, "active_policy", 80),
         "controller": _controller_record(session),
         "authority": trust,
